@@ -1,4 +1,4 @@
-# Context File
+# Context
 
 Indy Form library expects a context to define four functions `cast_row/2`, `change_row/2`, `create_row/2` and `update_row/2`. If a context module does not define these four functions or your are following a different naming convention, you can override relevant functions of `IndyForm.FormComponent` and plugin your functions.
 

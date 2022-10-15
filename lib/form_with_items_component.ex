@@ -16,7 +16,11 @@ defmodule IndyForm.FormWithItemsComponent do
 
       def on_init(socket), do: socket
 
-      def on_change(socket, _), do: socket
+      def on_change(socket, _change), do: socket
+
+      def on_delete_item(socket, _type), do: socket
+
+      def on_delete_item(socket, _type, _row), do: socket
 
       def transform_form(_socket, params), do: params
 
@@ -26,13 +30,30 @@ defmodule IndyForm.FormWithItemsComponent do
       
       def on_change_func(), do: &on_change/2
 
+      def delete_item_row_func(_type) do
+        raise ArgumentError, message: "delete_item_row_func/1 should be overridden."
+      end
+
+      def get_item_row_func(_type) do
+        raise ArgumentError, message: "get_item_row_func/1 should be overridden."
+      end
+
+      def on_delete_item_func(), do: &on_delete_item/2
+
+      def on_delete_item_param_func(), do: &on_delete_item/3
+
       defoverridable [
-        on_change: 2, 
-        transform_form: 2, 
+        cast_func: 0,
         change_func: 0, 
         create_func: 0, 
         update_func: 0, 
-        on_init: 1
+        on_init: 1,
+        on_change: 2, 
+        on_delete_item: 2,
+        on_delete_item: 3,
+        transform_form: 2, 
+        get_item_row_func: 1,
+        delete_item_row_func: 1
       ]
     end
   end
@@ -70,7 +91,6 @@ defmodule IndyForm.FormWithItemsComponent do
               update_func = update_func()
               create_action = unquote(create_action)
               update_action = unquote(update_action)
-              # socket = 
               IndyForm.FormComponent.apply_crud_action(
                 socket, 
                 form_params, 
@@ -88,16 +108,18 @@ defmodule IndyForm.FormWithItemsComponent do
               IndyForm.FormWithItemsComponent.close_delete_item_popup(params, socket)
 
             "delete_item" ->
+              get_item_row_func =  get_item_row_func(socket.assigns.delete_item_type)
               delete_item_row_func = delete_item_row_func(socket.assigns.delete_item_type)
-              get_item_row_func = get_item_row_func(socket.assigns.delete_item_type)
-              on_delete_item_func = &on_delete_item/2
+              on_delete_item_func = on_delete_item_func()
+              on_delete_item_param_func = on_delete_item_param_func()
               IndyForm.FormWithItemsComponent.delete_item(
-                params, 
-                socket, 
-                get_item_row_func, 
-                delete_item_row_func,
-                on_delete_item_func
-              )
+                  params, 
+                  socket, 
+                  get_item_row_func, 
+                  delete_item_row_func,
+                  on_delete_item_func,
+                  on_delete_item_param_func
+                )
 
             _ ->
               socket
@@ -131,17 +153,16 @@ defmodule IndyForm.FormWithItemsComponent do
     |> assign(:delete_item_type, nil)
   end
 
-  def delete_item(_params, socket, get_item_row_func, delete_item_row_func, on_delete_item_func) do
+  def delete_item(_params, socket, get_item_row_func, delete_item_row_func, on_delete_item_func, on_delete_item_param_func) do
     item_row = get_item_row_func.(socket.assigns.delete_item_id)
     result = delete_item_row_func.(item_row)
-    # item_rows = all_item_rows_func.(type, socket)
+    delete_item_type = socket.assigns.delete_item_type
 
     socket
     |> assign(:show_delete_item_popup, false)
     |> assign(:delete_item_id, nil)
     |> assign(:delete_item_type, nil)
-    |> on_delete_item_func.(socket.assigns.delete_item_type)
-
-    # |> assign(:item_rows, item_rows)
+    |> on_delete_item_func.(delete_item_type)
+    |> on_delete_item_param_func.(delete_item_type, item_row)
   end
 end

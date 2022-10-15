@@ -27,7 +27,6 @@ defmodule IndyForm.FormComponent do
       def on_init_func(), do: &on_init/1
 
       defoverridable [
-        on_value_change_func: 0, 
         on_value_change: 2,
         transform_form: 2, 
         change_func: 0, 
@@ -168,7 +167,7 @@ defmodule IndyForm.FormComponent do
     errors = Enum.into(changeset.errors, [])
     diff_errors = List.myers_difference(orig_errors, errors)
     
-    require Logger
+    # require Logger
     # Logger.info("orig_errors - #{inspect orig_errors}")
     # Logger.info("errors - #{inspect errors}")
     # Logger.info("diff_errors - #{inspect diff_errors}")
@@ -178,7 +177,7 @@ defmodule IndyForm.FormComponent do
           find_change_in_changes(socket, orig_changeset, changeset)
 
         diff_errors[:ins] != nil and (length(diff_errors[:ins]) == 1) ->
-          Logger.info("invalid change? - new_error")
+          # Logger.info("invalid change? - new_error")
           [{key, _}] = diff_errors[:ins]
           changeset = cast_func.(socket.assigns.row, form_params)
           new_value = Ecto.Changeset.get_change(changeset, key)
@@ -187,7 +186,7 @@ defmodule IndyForm.FormComponent do
 
 
         diff_errors[:del] != nil and (length(diff_errors[:del]) == 1) ->
-          Logger.info("invalid change?")
+          # Logger.info("invalid change?")
           [{key, _}] = diff_errors[:del]
           orig_changeset = cast_func.(socket.assigns.row, socket.assigns.prev_form_params || %{})
           new_value = Ecto.Changeset.get_field(changeset, key)
