@@ -9,7 +9,7 @@ defmodule IndyForm.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       description: """
-      Simplify LiveView Forms.
+      Simplifying LiveView Forms.
       """,
       name: "Indy Forms"
     ]
