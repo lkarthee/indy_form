@@ -27,12 +27,13 @@ defmodule IndyForm.FormComponent do
       def on_init_func(), do: &on_init/1
 
       defoverridable [
-        on_value_change: 2,
-        transform_form: 2, 
+        cast_func: 0,
         change_func: 0, 
         create_func: 0, 
         update_func: 0, 
         on_init: 1 
+        on_value_change: 2,
+        transform_form: 2, 
       ]
     end
   end
