@@ -31,14 +31,14 @@ defmodule IndyForm.FormComponent do
         change_func: 0, 
         create_func: 0, 
         update_func: 0, 
-        on_init: 1 
+        on_init: 1,
         on_value_change: 2,
         transform_form: 2, 
       ]
     end
   end
 
-  defmacro form_component(name, form_key, create_action, update_action) do 
+  defmacro form_component(name, form_key, create_action, update_action, opts \\ []) do 
     quote do
       @impl true
       def update(assigns, socket) do
@@ -54,7 +54,7 @@ defmodule IndyForm.FormComponent do
         form_params = params[form_key]
         cast_func = cast_func()
         change_func = change_func()
-        on_value_change_func = on_value_change_func()
+        on_value_change_func = unquote(opts)[:change_listeners] && on_value_change_func()
         socket = 
           IndyForm.FormComponent.validate(form_params, socket, cast_func, change_func, on_value_change_func)
         {:noreply, socket}
@@ -104,7 +104,7 @@ defmodule IndyForm.FormComponent do
         :create
 
       socket_update_actions != nil and  action in socket_update_actions ->
-        :create
+        :update
 
       is_list(update_action) and action in update_action ->
         :update
@@ -156,8 +156,8 @@ defmodule IndyForm.FormComponent do
       socket
     else
       change = find_change(form_params, socket, orig_changeset, changeset, cast_func)
-      require Logger
-      Logger.info("change - #{inspect change}")
+      # require Logger
+      # Logger.info("change - #{inspect change}")
       socket = assign(socket, :prev_form_params, form_params)
       (change && on_value_change_func.(socket, change)) || socket
     end
@@ -266,22 +266,42 @@ defmodule IndyForm.FormComponent do
   end  
 
   defp navigate(socket, row) do
-    on_success_navigate_to = socket.assigns[:on_success_navigate_to] || socket.assigns.return_to
+    on_success = socket.assigns[:on_success] || socket.assigns.return_to
     navigate_to = 
       cond do 
-        on_success_navigate_to && is_function(on_success_navigate_to) ->
-          on_success_navigate_to.(row)
+        on_success && is_function(on_success, 1) ->
+          on_success.(row)
+
+        on_success && is_function(on_success, 2) ->
+          on_success.(socket, row)
         
         true ->
-          on_success_navigate_to
+          on_success
 
       end
-    case socket.assigns[:patch] do
-      false ->
-        push_navigate(socket, to: navigate_to)
+    # require Logger
+    # Logger.info("navigate_to - #{inspect navigate_to}")
+    case navigate_to do
+      {:navigate, opts} when is_list(opts) ->
+        push_navigate(socket, opts)
+
+      {:navigate, to} when is_binary(to)  ->
+        push_navigate(socket, to: to)
+
+      {:patch, opts} when is_list(opts) ->
+        push_patch(socket, opts)
+
+      {:patch, to} when is_binary(to)  ->
+        push_patch(socket, to: to)
+
+      {:redirect, opts} when is_list(opts) ->
+        redirect(socket, opts)
+
+      {:redirect, to} when is_binary(to) ->
+        redirect(socket, to: to)
 
       _ ->
-        push_patch(socket, to: navigate_to)
+        socket
 
     end
   end

@@ -13,6 +13,40 @@ Forms can be simplified using IndyForm. A form can be implemented in just couple
 - `create_action`: can be an `atom` or `list of atoms`. This is used to determine what action should be performed - create or update.
 - `update_action`: can be an `atom` or `list of atoms`. This is used to determine what action should be performed - create or update.
 
+`create_action` or `update_action` values can be directly mapped to socket.assigns.live_action values. 
+
+## Using form component
+
+We can use the form component in `.heex` file like a normal `:live_component`. Form component requires the following things to be passed to `:live_component`:
+
+- `row` - row is the current row which is being created or updated
+- `action` - value of which is used to figure out whether the row needs to be created or updated
+- `return_to` - 
+- `on_success` - is one of tuple, function which takes one or two params.
+
+```html
+  <.modal title={@modal_page_title} return_to={@return_to}>
+    <.live_component
+      module={YourAppWeb.ProfileLive.ContactFormComponent}
+      id={@contact_row.id || :contact_new}
+      title={@page_title}
+      action={@live_action}
+      row={@contact_row}
+      user_row={@user_row}
+      return_to={@return_to}
+      on_success={@on_success}
+    />
+  </.modal>
+```
+
+```elixir
+  live "/profile", ProfileLive.Index, :index
+  live "/profile/contacts/new", ProfileLive.Index, :contact_new
+  live "/profile/contacts/:id/edit", ProfileLive.Index, :contact_edit
+```
+
+
+
 ## Under the hood
 
 First step of using `form_component` is using the `IndyForm.FormComponent` module.
