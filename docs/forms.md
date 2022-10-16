@@ -5,7 +5,7 @@ Forms can be simplified using IndyForm. A form can be implemented in just couple
 ```elixir
   use IndyForm.FormComponent, context: Context
 
-  form_component(name, form_key, create_action, update_action)
+  form_component(name, form_key, create_action, update_action, opts)
 ```
 
 - `name`: is name of the form. This is to generate flash messages like "User has been created".
@@ -21,7 +21,7 @@ We can use the form component in `.heex` file like a normal `:live_component`. F
 
 - `row` - row is the current row which is being created or updated
 - `action` - value of which is used to figure out whether the row needs to be created or updated
-- `return_to` - 
+- `return_to` - is one of tuple, function which takes one or two params.
 - `on_success` - is one of tuple, function which takes one or two params.
 
 ```html
@@ -68,7 +68,7 @@ The following lines are inserted in the module with `use IndyForm.FormComponent`
 
   def update_func(), do: &Context.update_row/2
 
-  def on_value_change(socket, _), do: socket
+  def on_value_change(socket, {key, old_value, new_value}), do: socket
   
   def on_init(socket), do: socket
 
