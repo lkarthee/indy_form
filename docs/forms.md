@@ -1,6 +1,8 @@
-# Forms
+# Indy Forms
 
 Forms can be simplified using IndyForm. A form can be implemented in just couple of lines.
+
+Sample code can be found at https://github.com/lkarthee/indy_form_sample .
 
 ```elixir
   use IndyForm.FormComponent, context: Context
@@ -12,17 +14,47 @@ Forms can be simplified using IndyForm. A form can be implemented in just couple
 - `form_key`: is your schema name. This is used for finding the form in the params.
 - `create_action`: can be an `atom` or `list of atoms`. This is used to determine what action should be performed - create or update.
 - `update_action`: can be an `atom` or `list of atoms`. This is used to determine what action should be performed - create or update.
-
 `create_action` or `update_action` values can be directly mapped to socket.assigns.live_action values. 
+- `opts`: `change_listeners` can be enabled by passing it through `opts`
+
+```
+  form_component(name, form_key, create_action, update_action, change_listeners: true)
+```
 
 ## Using form component
 
 We can use the form component in `.heex` file like a normal `:live_component`. Form component requires the following things to be passed to `:live_component`:
 
-- `row` - row is the current row which is being created or updated
-- `action` - value of which is used to figure out whether the row needs to be created or updated
-- `return_to` - is one of tuple, function which takes one or two params.
-- `on_success` - is one of tuple, function which takes one or two params.
+ - `row` - row is the current row which is being created or updated.
+ - `action` - value of which is used to figure out whether the row needs to be created or updated.
+ - `return_to` - a tuple or function which returns a tuple.
+ - `on_success` - a tuple or function which returns a tuple
+
+`on_success` and `return_to` behave similarly:
+
+ - tuple is one of  `{:patch, url} | {:navigate, url}|  {:redirect , url}`, 
+ - `:patch` does a `push_patch`
+ - `:navigate` does a `push_navigate`
+ - `:redirect` does a `redirect`
+ - function which takes one param `fn row -> ... end` and returns a tuple.
+ - function which takes two params `fn socket, row -> ... end` and returns a tuple.
+ - `nil` or any other value to abort navigation occurs.
+
+Some examples of `on_success` and `return_to` functions:
+```elixir
+fn row -> 
+  route = Routes.profile_index_path(socket, :contact_show, row.id)
+  {:patch, route}
+end
+
+# same can be written as
+&{:patch, Routes.profile_index_path(socket, :contact_show, &1.id)}
+```
+
+Functions are useful for: 
+
+ - generating naviation links which dont exist when the form is displayed. Pages which display a parent row and child line items can use this to create a row and navigate to edit page or show page to allow user to create line items.
+ - performing actions like dismiss popup, refresh table when you are not navigating to other page.
 
 ```html
   <.modal title={@modal_page_title} return_to={@return_to}>
@@ -43,9 +75,8 @@ We can use the form component in `.heex` file like a normal `:live_component`. F
   live "/profile", ProfileLive.Index, :index
   live "/profile/contacts/new", ProfileLive.Index, :contact_new
   live "/profile/contacts/:id/edit", ProfileLive.Index, :contact_edit
+  live "/profile/contacts/:id/show", ProfileLive.Index, :contact_show
 ```
-
-
 
 ## Under the hood
 
@@ -111,6 +142,8 @@ You can override to assign some variables, etc. It expects a `socket` to be retu
 
 You can override to handle changes in form happening without writing a single line of javascript. 
 
+Note: Don't forget to enable value change listeners by passing `change_listeners: true` through `form_component` opts.
+
 ```elixir
   # handle changes relating to field :contact_me
   def on_value_change(socket, {:contact_me, _old_value, new_value}) do
@@ -168,6 +201,20 @@ You can supply your own update function by overriding the function in your FormC
 `update_func` is invoked while handling `validate` event on `:live_component`.
 
 
+## What to do if my context module has different naming conventions
+
+If your context has `_schema` functions instead of `_row` functions.
+
+You can specify your override the appropriate functions and plugin your own functions:
+
+```elixir
+
+def create_func(), do: &Accounts.create_user/2
+
+def cast_func(), do: &Accounts.cast_user/2
+```
+
+
 ## Types of forms
 
 There are two types forms:
@@ -204,7 +251,6 @@ end
 
 A form with line items has a form with atleast one set of line items. This is an extension of simple form.
 This has a delete confirmation popup for deleting a line item.
-
 
 Form with line items can be implemented by using `IndyForm.FormWithItemsComponent`.
 
