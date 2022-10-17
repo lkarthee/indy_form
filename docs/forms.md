@@ -2,7 +2,7 @@
 
 Forms can be simplified using IndyForm. A form can be implemented in just couple of lines.
 
-Sample code can be found at https://github.com/lkarthee/indy_form_sample .
+Sample code can be found at https://github.com/lkarthee/indy_form_sample
 
 ```elixir
   use IndyForm.FormComponent, context: Context
