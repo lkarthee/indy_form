@@ -14,9 +14,15 @@ defmodule IndyForm.FormComponent do
 
       def update_func(), do: &unquote(module).update_row/2
 
-      def on_value_change(socket, _), do: socket
-      
       def on_init(socket), do: socket
+
+      def on_success(socket, _row), do: socket
+
+      def on_error(socket, _changeset), do: socket
+
+      def on_event(_event, _params, socket), do: socket
+
+      def on_value_change(socket, _), do: socket
 
       def transform_form(_socket, params), do: params
 
@@ -26,19 +32,28 @@ defmodule IndyForm.FormComponent do
       
       def on_init_func(), do: &on_init/1
 
+      def on_error_func(), do: &on_error/2
+
+      def on_success_func(), do: &on_success/2
+
+      def on_event_func(), do: &on_event/3
+
       defoverridable [
         cast_func: 0,
         change_func: 0, 
         create_func: 0, 
         update_func: 0, 
         on_init: 1,
+        on_success: 2,
+        on_error: 2,
+        on_event: 3,
         on_value_change: 2,
         transform_form: 2, 
       ]
     end
   end
 
-  defmacro form_component(name, form_key, create_action, update_action, opts \\ []) do 
+  defmacro form_component(form_key, create_action, update_action, opts \\ []) do # name, 
     quote do
       @impl true
       def update(assigns, socket) do
@@ -62,7 +77,6 @@ defmodule IndyForm.FormComponent do
 
       @impl true
       def handle_event("save", params, socket) do
-        name = unquote(name)
         form_key = unquote(form_key)
         form_params = params[form_key]
         transform_form_func = transform_form_func()
@@ -70,19 +84,29 @@ defmodule IndyForm.FormComponent do
         
         create_func = create_func() 
         update_func = update_func()
+        on_error_func = on_error_func()
+        on_success_func = on_success_func()
         create_action = unquote(create_action) 
         update_action = unquote(update_action)
         socket = 
           apply_crud_action(
             socket, 
             form_params, 
-            name, 
             create_action, 
             update_action, 
             create_func, 
-            update_func
+            update_func,
+            on_success_func,
+            on_error_func
           )
         
+        {:noreply, socket}
+      end
+
+      @impl true
+      def handle_event(event, params, socket) do
+        on_event_func = on_event_func()
+        socket = on_event_func.(event, params, socket)
         {:noreply, socket}
       end
     end
@@ -118,16 +142,16 @@ defmodule IndyForm.FormComponent do
     end
   end
 
-  def apply_crud_action(socket, form_params, name, create_action, update_action, create_func, update_func) do
+  def apply_crud_action(socket, form_params, create_action, update_action, create_func, update_func, on_success_func, on_error_func) do # name, 
     crud_action = crud_action(socket, create_action, update_action)
     case crud_action do
       :create ->
-        msg = "#{name} created successfully"
-        IndyForm.FormComponent.create(form_params, socket, create_func, msg)
+        # msg = "#{name} created successfully"
+        IndyForm.FormComponent.create(form_params, socket, create_func, on_success_func, on_error_func) #, msg
 
       :update ->
-        msg = "#{name} update successfully"
-        IndyForm.FormComponent.update(form_params, socket, update_func, msg)
+        # msg = "#{name} update successfully"
+        IndyForm.FormComponent.update(form_params, socket, update_func, on_success_func, on_error_func) #, msg
 
     end  
   end
@@ -265,7 +289,7 @@ defmodule IndyForm.FormComponent do
     end    
   end  
 
-  defp navigate(socket, row) do
+  defp maybe_navigate(socket, row) do
     on_success = socket.assigns[:on_success] || socket.assigns.return_to
     navigate_to = 
       cond do 
@@ -306,35 +330,47 @@ defmodule IndyForm.FormComponent do
     end
   end
 
-  def create(form_params, socket, create_func, msg) do
+  defp maybe_invoke_on_error(socket, changeset) do
+    on_error = socket.assigns[:on_error]
+    (on_error && on_error.(socket, changeset)) || socket
+  end
+
+  def create(form_params, socket, create_func, on_success_func, on_error_func) do
     row = socket.assigns.row
     case create_func.(row, form_params) do
       {:ok, row} ->
         socket
-        |> put_flash(:info, msg)
-        |> navigate(row)
+        # |> put_flash(:info, msg)
+        |> on_success_func.(row)
+        |> maybe_navigate(row)
       
       {:error, %Ecto.Changeset{} = changeset} ->
         # require Logger
         # Logger.info("##changeset - #{inspect changeset}")
-        assign(socket, :changeset, changeset)
+        socket
+        |> assign(:changeset, changeset)
+        |> on_error_func.(changeset)
+        |> maybe_invoke_on_error(changeset)
     end
   end
 
-  def update(form_params, socket, update_func, msg) do
+  def update(form_params, socket, update_func, on_success_func, on_error_func) do
     row = socket.assigns.row
     case update_func.(row, form_params) do
       {:ok, row} ->
         socket
-        |> put_flash(:info, msg)
-        |> navigate(row)
+        # |> put_flash(:info, msg)
+        |> on_success_func.(row)
+        |> maybe_navigate(row)
 
 
       {:error, %Ecto.Changeset{} = changeset} ->
         # require Logger
         # Logger.info("##changeset - #{inspect changeset}")
-        assign(socket, :changeset, changeset)
+        socket
+        |> assign(:changeset, changeset)
+        |> on_error_func.(changeset)
+        |> maybe_invoke_on_error(changeset)
     end
   end
-
 end

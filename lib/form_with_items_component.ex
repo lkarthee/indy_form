@@ -16,19 +16,31 @@ defmodule IndyForm.FormWithItemsComponent do
 
       def on_init(socket), do: socket
 
-      def on_change(socket, _change), do: socket
+      def on_success(socket, _row), do: socket
+
+      def on_error(socket, _changeset), do: socket
+
+      def on_event(_event, _params, socket), do: socket
+
+      def on_value_change(socket, _change), do: socket
+
+      def transform_form(_socket, params), do: params
 
       def on_delete_item(socket, _type), do: socket
 
       def on_delete_item(socket, _type, _row), do: socket
 
-      def transform_form(_socket, params), do: params
-
       def transform_form_func(), do: &transform_form/2
 
       def on_init_func(), do: &on_init/1
+
+      def on_error_func(), do: &on_error/2
+
+      def on_success_func(), do: &on_success/2
+
+      def on_event_func(), do: &on_event/3
       
-      def on_change_func(), do: &on_change/2
+      def on_value_change_func(), do: &on_value_change/2
 
       def delete_item_row_func(_type) do
         raise ArgumentError, message: "delete_item_row_func/1 should be overridden."
@@ -48,17 +60,20 @@ defmodule IndyForm.FormWithItemsComponent do
         create_func: 0, 
         update_func: 0, 
         on_init: 1,
-        on_change: 2, 
+        on_success: 2,
+        on_error: 2,
+        on_event: 3,
+        transform_form: 2, 
+        on_value_change: 2,
         on_delete_item: 2,
         on_delete_item: 3,
-        transform_form: 2, 
         get_item_row_func: 1,
         delete_item_row_func: 1
       ]
     end
   end
 
-  defmacro form_component(name, form_key, create_action, update_action) do
+  defmacro form_component(form_key, create_action, update_action, opts \\ []) do #name, 
     quote do
       @impl true
       def update(assigns, socket) do
@@ -69,65 +84,77 @@ defmodule IndyForm.FormWithItemsComponent do
       end
 
       @impl true
-      def handle_event(event_name, params, socket) do
+      def handle_event("validate", params, socket) do
+        form_key = unquote(form_key)
+        form_params = params[form_key]
+        cast_func = cast_func()
+        change_func = change_func()
+        on_value_change_func = unquote(opts)[:change_listeners] && on_value_change_func()
         socket = 
-          case event_name do
-            "validate" ->
-              form_key = unquote(form_key)
-              form_params = params[form_key]
-              change_func = change_func()
-              cast_func = cast_func()
-              on_change_func = on_change_func()
-              IndyForm.FormComponent.validate(form_params, socket, cast_func, change_func, on_change_func)
-
-            "save" ->
-              name = unquote(name)
-              form_key = unquote(form_key)
-              form_params = params[form_key]
-              transform_form_func = transform_form_func()
-              form_params = transform_form_func.(socket, form_params)
-              
-              create_func = create_func() 
-              update_func = update_func()
-              create_action = unquote(create_action)
-              update_action = unquote(update_action)
-              IndyForm.FormComponent.apply_crud_action(
-                socket, 
-                form_params, 
-                name, 
-                create_action, 
-                update_action, 
-                create_func, 
-                update_func
-              )
-              
-            "show_delete_item_popup" ->
-              IndyForm.FormWithItemsComponent.show_delete_item_popup(params, socket)
-
-            "close_delete_item_popup" ->
-              IndyForm.FormWithItemsComponent.close_delete_item_popup(params, socket)
-
-            "delete_item" ->
-              get_item_row_func =  get_item_row_func(socket.assigns.delete_item_type)
-              delete_item_row_func = delete_item_row_func(socket.assigns.delete_item_type)
-              on_delete_item_func = on_delete_item_func()
-              on_delete_item_param_func = on_delete_item_param_func()
-              IndyForm.FormWithItemsComponent.delete_item(
-                  params, 
-                  socket, 
-                  get_item_row_func, 
-                  delete_item_row_func,
-                  on_delete_item_func,
-                  on_delete_item_param_func
-                )
-
-            _ ->
-              socket
-              # on_event(event_name, params, socket)
-              
-          end
+          IndyForm.FormComponent.validate(form_params, socket, cast_func, change_func, on_value_change_func)
         {:noreply, socket}
       end
+
+      @impl true
+      def handle_event("save", params, socket) do
+        form_key = unquote(form_key)
+        form_params = params[form_key]
+        transform_form_func = transform_form_func()
+        form_params = transform_form_func.(socket, form_params)
+        
+        create_func = create_func() 
+        update_func = update_func()
+        on_error_func = on_error_func()
+        on_success_func = on_success_func()
+        create_action = unquote(create_action) 
+        update_action = unquote(update_action)
+        socket = 
+          IndyForm.FormComponent.apply_crud_action(
+            socket, 
+            form_params, 
+            create_action, 
+            update_action, 
+            create_func, 
+            update_func,
+            on_success_func,
+            on_error_func
+          )
+        {:noreply, socket}
+      end
+
+      @impl true
+      def handle_event("show_delete_item_popup", params, socket) do
+        IndyForm.FormWithItemsComponent.show_delete_item_popup(params, socket)
+      end
+
+      @impl true
+      def handle_event("close_delete_item_popup", params, socket) do
+        IndyForm.FormWithItemsComponent.close_delete_item_popup(params, socket)
+      end
+
+      @impl true
+      def handle_event("show_delete_item_popup", params, socket) do
+        get_item_row_func =  get_item_row_func(socket.assigns.delete_item_type)
+        delete_item_row_func = delete_item_row_func(socket.assigns.delete_item_type)
+        on_delete_item_func = on_delete_item_func()
+        on_delete_item_param_func = on_delete_item_param_func()
+        IndyForm.FormWithItemsComponent.delete_item(
+            params, 
+            socket, 
+            get_item_row_func, 
+            delete_item_row_func,
+            on_delete_item_func,
+            on_delete_item_param_func
+          )
+      end
+
+      @impl true
+      def handle_event(event, params, socket) do
+        on_event_func = on_event_func()
+        socket = on_event_func.(event, params, socket)
+        {:noreply, socket}
+      end
+
     end
   end
 
@@ -166,3 +193,65 @@ defmodule IndyForm.FormWithItemsComponent do
     |> on_delete_item_param_func.(delete_item_type, item_row)
   end
 end
+
+
+
+      # def handle_event(event_name, params, socket) do
+      #   # socket = 
+      #   #   case event_name do
+      #   #     # "validate" ->
+      #       #   form_key = unquote(form_key)
+      #       #   form_params = params[form_key]
+      #       #   change_func = change_func()
+      #       #   cast_func = cast_func()
+      #       #   on_change_func = on_change_func()
+      #       #   IndyForm.FormComponent.validate(form_params, socket, cast_func, change_func, on_change_func)
+
+      #       # "save" ->
+      #       #   name = unquote(name)
+      #       #   form_key = unquote(form_key)
+      #       #   form_params = params[form_key]
+      #       #   transform_form_func = transform_form_func()
+      #       #   form_params = transform_form_func.(socket, form_params)
+              
+      #       #   create_func = create_func() 
+      #       #   update_func = update_func()
+      #       #   create_action = unquote(create_action)
+      #       #   update_action = unquote(update_action)
+      #       #   IndyForm.FormComponent.apply_crud_action(
+      #       #     socket, 
+      #       #     form_params, 
+      #       #     name, 
+      #       #     create_action, 
+      #       #     update_action, 
+      #       #     create_func, 
+      #       #     update_func
+      #       #   )
+              
+      #       # "show_delete_item_popup" ->
+      #       #   IndyForm.FormWithItemsComponent.show_delete_item_popup(params, socket)
+
+      #       # "close_delete_item_popup" ->
+      #       #   IndyForm.FormWithItemsComponent.close_delete_item_popup(params, socket)
+
+      #       # "delete_item" ->
+      #       #   get_item_row_func =  get_item_row_func(socket.assigns.delete_item_type)
+      #       #   delete_item_row_func = delete_item_row_func(socket.assigns.delete_item_type)
+      #       #   on_delete_item_func = on_delete_item_func()
+      #       #   on_delete_item_param_func = on_delete_item_param_func()
+      #       #   IndyForm.FormWithItemsComponent.delete_item(
+      #       #       params, 
+      #       #       socket, 
+      #       #       get_item_row_func, 
+      #       #       delete_item_row_func,
+      #       #       on_delete_item_func,
+      #       #       on_delete_item_param_func
+      #       #     )
+
+      #       _ ->
+      #         socket
+      #         # on_event(event_name, params, socket)
+              
+      #     end
+      #   {:noreply, socket}
+      # end
