@@ -6,10 +6,9 @@ Forms can be simplified using IndyForm. A form can be implemented in just couple
 ```elixir
   use IndyForm.FormComponent, context: Context
 
-  form_component(name, form_key, create_action, update_action, opts)
+  form_component(form_key, create_action, update_action, opts)
 ```
 
-- `name`: is name of the form. This is to generate flash messages like "User has been created".
 - `form_key`: is your schema name. This is used for finding the form in the params.
 - `create_action`: can be an `atom` or `list of atoms`. This is used to determine what action should be performed - create or update.
 - `update_action`: can be an `atom` or `list of atoms`. This is used to determine what action should be performed - create or update.
@@ -28,7 +27,7 @@ defmodule UserForm do
 
   use IndyForm.FormComponent, context: Context
 
-  form_component("User", "user", :new, :edit)
+  form_component("user", :new, :edit)
 end
 ```
 
@@ -39,12 +38,11 @@ defmodule UserForm do
 
   use IndyForm.FormComponent, context: Context
 
-  @name "User"
   @form_key "user"
   @create_action :new
   @edit_action :edit
 
-  form_component(@name, @form_key, @create_action, @edit_action)
+  form_component(@form_key, @create_action, @edit_action)
 end
 ```
 
