@@ -360,7 +360,7 @@ defmodule IndyForm.FormComponent do
     result = create_func.(row, form_params)
     case result do
       {:ok, row} ->
-        maybe_invoke_on_success(socket, result, on_success_func)
+        maybe_invoke_on_success(socket, row, on_success_func)
       
       {:error, %Ecto.Changeset{} = changeset} ->
         # require Logger
