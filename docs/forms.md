@@ -28,18 +28,19 @@ We can use the form component in `.heex` file like a normal `:live_component`. F
  - `action` - value of which is used to figure out whether the row needs to be created or updated.
  - `return_to` - a tuple or function which returns a tuple.
  - `on_success` - a tuple or function which returns a tuple
+ - `on_error` - a tuple or function which returns a tuple
 
 `on_success` and `return_to` behave similarly:
 
  - tuple is one of  `{:patch, url} | {:navigate, url}|  {:redirect , url}`, 
- - `:patch` does a `push_patch`
- - `:navigate` does a `push_navigate`
- - `:redirect` does a `redirect`
+ - `:patch` does a `push_patch` on socket.
+ - `:navigate` does a `push_navigate` on socket.
+ - `:redirect` does a `redirect` on socket.
  - function which takes one param `fn row -> ... end` and returns a tuple.
- - function which takes two params `fn socket, row -> ... end` and returns a tuple.
+ - function which takes two params `fn socket, row -> ... end` and returns a socket.
  - `nil` or any other value to abort navigation occurs.
 
-Some examples of `on_success` and `return_to` functions:
+Example of `on_success/1` and `on_return/1`function:
 ```elixir
 fn row -> 
   route = Routes.profile_index_path(socket, :contact_show, row.id)
@@ -49,6 +50,10 @@ end
 # same can be written as
 &{:patch, Routes.profile_index_path(socket, :contact_show, &1.id)}
 ```
+
+
+
+
 
 Functions are useful for: 
 
@@ -98,19 +103,29 @@ The following lines are inserted in the module with `use IndyForm.FormComponent`
 
   def update_func(), do: &Context.update_row/2
 
-  def on_value_change(socket, {key, old_value, new_value}), do: socket
-  
   def on_init(socket), do: socket
+
+  def on_success(socket, _row), do: socket
+
+  def on_error(socket, _changeset_or_error_tuple), do: socket
+
+  def on_event(_event, _params, socket), do: socket
+
+  def on_value_change(socket, {key, old_value, new_value}), do: socket
 
   def transform_form(_socket, params), do: params
 
   defoverridable [
-    on_value_change: 2,
-    transform_form: 2, 
+    cast_func: 0,
     change_func: 0, 
     create_func: 0, 
     update_func: 0, 
-    on_init: 1 
+    on_init: 1,
+    on_success: 2,
+    on_error: 2,
+    on_event: 3,
+    on_value_change: 2,
+    transform_form: 2, 
   ]
 
   # and some more code to implement `:live_component` functions.
@@ -133,6 +148,20 @@ You can override to assign some variables, etc. It expects a `socket` to be retu
     |> assign(:show_email, show_email?)
   end
 ```
+
+### `on_success(socket, _row)`
+
+`on_success/2` is invoked after successfully creating or updating a row.
+
+### `on_error(socket, _changeset_or_error_tuple)`
+
+`on_error/2` is invoked when there is an error creating or updating a row.
+
+
+### `on_event(_event, _params, socket)`
+
+`on_event/3` form component overrides `handle_event/3` and handles few events of interest like `validate`, `save`, etc. Unhandled events are forwarded to to this callback. You can override it for handling events your events.
+
 ### `on_value_change(socket, {key, old_value, new_value})`
 
 `on_value_change/2` is invoked when there is a change is detected in field while handling `validate` event.

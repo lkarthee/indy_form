@@ -18,7 +18,7 @@ defmodule IndyForm.FormWithItemsComponent do
 
       def on_success(socket, _row), do: socket
 
-      def on_error(socket, _changeset), do: socket
+      def on_error(socket, _changeset_or_error_tuple), do: socket
 
       def on_event(_event, _params, socket), do: socket
 

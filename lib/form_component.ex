@@ -18,7 +18,7 @@ defmodule IndyForm.FormComponent do
 
       def on_success(socket, _row), do: socket
 
-      def on_error(socket, _changeset), do: socket
+      def on_error(socket, _changeset_or_error_tuple), do: socket
 
       def on_event(_event, _params, socket), do: socket
 
@@ -310,87 +310,88 @@ defmodule IndyForm.FormComponent do
         redirect(socket, to: to)
 
       _ ->
-        navigate_to
+        socket
 
     end
   end
 
-  defp maybe_invoke_on_success(socket, row) do
-    on_success = socket.assigns[:on_success] || socket.assigns.return_to
-    navigate_to = 
+  defp maybe_invoke_on_success(socket, row, on_success_func) do
+    on_success = socket.assigns[:on_success]
+    result = 
       cond do 
         on_success == nil ->
-          nil
+          on_success_func.(socket, row)
+
+        is_tuple(on_success) ->
+          maybe_navigate(socket, on_success)
 
         on_success && is_function(on_success, 1) ->
-          on_success.(row)
+          navigate_to = on_success.(row)
+          maybe_navigate(socket, navigate_to)
 
         on_success && is_function(on_success, 2) ->
           on_success.(socket, row)
-        
-        true ->
-          on_success
 
       end
-    (navigate_to && maybe_navigate(socket, navigate_to)) || socket
+    
   end
 
-  defp maybe_invoke_on_error(socket, changeset) do
+  defp maybe_invoke_on_error(socket, result, on_error_func) do
     on_error = socket.assigns[:on_error]
-    navigate_to = 
-      cond do 
-        on_error == nil ->
-          nil
+    cond do 
+      on_error == nil ->
+        on_error_func.(socket, result)
 
-        on_error && is_function(on_error, 1) ->
-          on_error.(changeset)
+      is_tuple(on_error) ->
+          maybe_navigate(socket, on_error)
 
-        on_error && is_function(on_error, 2) ->
-          on_error.(socket, changeset)
-        
-        true ->
-          on_error
+      on_error && is_function(on_error, 1) ->
+        navigate_to = on_error.(result)
+        maybe_navigate(socket, navigate_to)
 
-      end
-    (navigate_to && maybe_navigate(socket, navigate_to)) || socket
+      on_error && is_function(on_error, 2) ->
+        on_error.(socket, result)
+    
+    end
   end
 
   def create(form_params, socket, create_func, on_success_func, on_error_func) do
     row = socket.assigns.row
-    case create_func.(row, form_params) do
+    result = create_func.(row, form_params)
+    case result do
       {:ok, row} ->
-        socket
-        # |> put_flash(:info, msg)
-        |> on_success_func.(row)
-        |> maybe_invoke_on_success(row)
+        maybe_invoke_on_success(socket, result, on_success_func)
       
       {:error, %Ecto.Changeset{} = changeset} ->
         # require Logger
         # Logger.info("##changeset - #{inspect changeset}")
         socket
         |> assign(:changeset, changeset)
-        |> on_error_func.(changeset)
-        |> maybe_invoke_on_error(changeset)
+        |> maybe_invoke_on_error(changeset, on_error_func)
+
+      _ ->
+        maybe_invoke_on_error(socket, result, on_error_func)
+
     end
   end
 
   def update(form_params, socket, update_func, on_success_func, on_error_func) do
     row = socket.assigns.row
-    case update_func.(row, form_params) do
+    result = update_func.(row, form_params)
+    case result do
       {:ok, row} ->
-        socket
-        # |> put_flash(:info, msg)
-        |> on_success_func.(row)
-        |> maybe_navigate(row)
-
+        maybe_invoke_on_success(socket, row, on_success_func)
 
       {:error, %Ecto.Changeset{} = changeset} ->
         # require Logger
         # Logger.info("##changeset - #{inspect changeset}")
         socket
         |> assign(:changeset, changeset)
-        |> on_error_func.(changeset)
-        |> maybe_invoke_on_error(changeset)
+        |> maybe_invoke_on_error(changeset, on_error_func)
+
+      _ ->
+        maybe_invoke_on_error(socket, result, on_error_func)
+        
     end
   end
 end
