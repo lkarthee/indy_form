@@ -22,7 +22,9 @@ Forms can be simplified using IndyForm. A form can be implemented in just couple
 A complete example which reduces around 50 lines of boilerplate code `form component` to 3 just lines:
 
 ```elixir
-defmodule UserForm do
+defmodule YourAppWeb.UserForm do
+  use YourAppWeb, :live_component
+  
   alias IndyFormSample.Accounts, as: Context
 
   use IndyForm.FormComponent, context: Context
@@ -33,7 +35,8 @@ end
 
 or can be writen in verbose 7 lines if you prefer this way:
 ```elixir
-defmodule UserForm do
+defmodule YourAppWeb.UserForm do
+  use YourAppWeb, :live_component
   alias IndyFormSample.Accounts, as: Context
 
   use IndyForm.FormComponent, context: Context
