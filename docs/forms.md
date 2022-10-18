@@ -7,10 +7,9 @@ Sample code can be found at https://github.com/lkarthee/indy_form_sample
 ```elixir
   use IndyForm.FormComponent, context: Context
 
-  form_component(name, form_key, create_action, update_action, opts)
+  form_component(form_key, create_action, update_action, opts)
 ```
 
-- `name`: is name of the form. This is to generate flash messages like "User has been created".
 - `form_key`: is your schema name. This is used for finding the form in the params.
 - `create_action`: can be an `atom` or `list of atoms`. This is used to determine what action should be performed - create or update.
 - `update_action`: can be an `atom` or `list of atoms`. This is used to determine what action should be performed - create or update.
@@ -18,7 +17,7 @@ Sample code can be found at https://github.com/lkarthee/indy_form_sample
 - `opts`: `change_listeners` can be enabled by passing it through `opts`
 
 ```
-  form_component(name, form_key, create_action, update_action, change_listeners: true)
+  form_component(form_key, create_action, update_action, change_listeners: true)
 ```
 
 ## Using form component
@@ -238,12 +237,11 @@ defmodule UserForm do
 
   use IndyForm.FormComponent, context: Context
 
-  @name "User"
   @form_key "user"
   @create_action :new
   @edit_action :edit
 
-  form_component(@name, @form_key, @create_action, @edit_action)
+  form_component(@form_key, @create_action, @edit_action)
 end
 ```
 

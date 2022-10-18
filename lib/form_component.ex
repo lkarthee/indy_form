@@ -289,22 +289,7 @@ defmodule IndyForm.FormComponent do
     end    
   end  
 
-  defp maybe_navigate(socket, row) do
-    on_success = socket.assigns[:on_success] || socket.assigns.return_to
-    navigate_to = 
-      cond do 
-        on_success && is_function(on_success, 1) ->
-          on_success.(row)
-
-        on_success && is_function(on_success, 2) ->
-          on_success.(socket, row)
-        
-        true ->
-          on_success
-
-      end
-    # require Logger
-    # Logger.info("navigate_to - #{inspect navigate_to}")
+  defp maybe_navigate(socket, navigate_to) do
     case navigate_to do
       {:navigate, opts} when is_list(opts) ->
         push_navigate(socket, opts)
@@ -325,14 +310,49 @@ defmodule IndyForm.FormComponent do
         redirect(socket, to: to)
 
       _ ->
-        socket
+        navigate_to
 
     end
   end
 
+  defp maybe_invoke_on_success(socket, row) do
+    on_success = socket.assigns[:on_success] || socket.assigns.return_to
+    navigate_to = 
+      cond do 
+        on_success == nil ->
+          nil
+
+        on_success && is_function(on_success, 1) ->
+          on_success.(row)
+
+        on_success && is_function(on_success, 2) ->
+          on_success.(socket, row)
+        
+        true ->
+          on_success
+
+      end
+    (navigate_to && maybe_navigate(socket, navigate_to)) || socket
+  end
+
   defp maybe_invoke_on_error(socket, changeset) do
     on_error = socket.assigns[:on_error]
-    (on_error && on_error.(socket, changeset)) || socket
+    navigate_to = 
+      cond do 
+        on_error == nil ->
+          nil
+
+        on_error && is_function(on_error, 1) ->
+          on_error.(changeset)
+
+        on_error && is_function(on_error, 2) ->
+          on_error.(socket, changeset)
+        
+        true ->
+          on_error
+
+      end
+    (navigate_to && maybe_navigate(socket, navigate_to)) || socket
   end
 
   def create(form_params, socket, create_func, on_success_func, on_error_func) do
@@ -342,7 +362,7 @@ defmodule IndyForm.FormComponent do
         socket
         # |> put_flash(:info, msg)
         |> on_success_func.(row)
-        |> maybe_navigate(row)
+        |> maybe_invoke_on_success(row)
       
       {:error, %Ecto.Changeset{} = changeset} ->
         # require Logger
