@@ -37,6 +37,7 @@ or can be writen in verbose 7 lines if you prefer this way:
 ```elixir
 defmodule YourAppWeb.UserForm do
   use YourAppWeb, :live_component
+  
   alias IndyFormSample.Accounts, as: Context
 
   use IndyForm.FormComponent, context: Context
