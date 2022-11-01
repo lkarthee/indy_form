@@ -124,21 +124,23 @@ defmodule IndyForm.FormWithItemsComponent do
 
       @impl true
       def handle_event("show_delete_item_popup", params, socket) do
-        IndyForm.FormWithItemsComponent.show_delete_item_popup(params, socket)
+        socket = IndyForm.FormWithItemsComponent.show_delete_item_popup(params, socket)
+        {:noreply, socket}
       end
 
       @impl true
       def handle_event("close_delete_item_popup", params, socket) do
-        IndyForm.FormWithItemsComponent.close_delete_item_popup(params, socket)
+        socket = IndyForm.FormWithItemsComponent.close_delete_item_popup(params, socket)
+        {:noreply, socket}
       end
 
       @impl true
-      def handle_event("show_delete_item_popup", params, socket) do
+      def handle_event("delete_item", params, socket) do
         get_item_row_func =  get_item_row_func(socket.assigns.delete_item_type)
         delete_item_row_func = delete_item_row_func(socket.assigns.delete_item_type)
         on_delete_item_func = on_delete_item_func()
         on_delete_item_param_func = on_delete_item_param_func()
-        IndyForm.FormWithItemsComponent.delete_item(
+        socket = IndyForm.FormWithItemsComponent.delete_item(
             params, 
             socket, 
             get_item_row_func, 
@@ -146,6 +148,7 @@ defmodule IndyForm.FormWithItemsComponent do
             on_delete_item_func,
             on_delete_item_param_func
           )
+        {:noreply, socket}
       end
 
       @impl true
